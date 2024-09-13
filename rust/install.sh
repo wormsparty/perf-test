@@ -4,6 +4,8 @@ if ! which cargo > /dev/null 2>&1; then
 	curl https://sh.rustup.rs -sSf | sh
 fi
 
+cargo install cargo-watch
+
 # Build
 rustup default stable
 rustup update
