@@ -5,3 +5,5 @@ if ! which multitime > /dev/null; then
 fi
 
 multitime -q -n 10 "./run.sh"
+
+# TODO: Run everything

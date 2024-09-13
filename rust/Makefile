@@ -1,7 +1,7 @@
 all: build
 
 build:
-	./scripts/install.sh
+	./install.sh
 
 run: src/*.rs
 	cargo r
