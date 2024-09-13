@@ -16,7 +16,12 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	
-	router := gin.Default()
+	router := gin.New()
+
+	router.Use(
+		//gin.LoggerWithWriter(gin.DefaultWriter, "/logs/"),
+		gin.Recovery(),
+	)
 
 	router.Use(setConfig(&cfg))
 
