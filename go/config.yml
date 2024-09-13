@@ -1,0 +1,13 @@
+server:
+  host: ""
+  port: 8000
+  cors_origins:
+    - "http://localhost:3000"
+  mode: "release"
+
+database:
+  address: ":5432"
+  user: "rust"
+  pass: "rust"
+  name: "rust"
+

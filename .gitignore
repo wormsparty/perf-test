@@ -1,0 +1,11 @@
+/cpp/obj
+/cpp/main
+/go/pkg
+/go/main
+/go/tmp
+/go/.env
+/rust/target
+/rust/rust-test
+/rust/.env
+/.venv
+__pycache__

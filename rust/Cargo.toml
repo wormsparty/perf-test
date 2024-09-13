@@ -1,0 +1,12 @@
+[package]
+name = "rust-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4"
+convert_case = "0.6.0"
+dotenvy = "0.15.7"
+rocket = { version = "0.5.1", features = ["json"] }
+serde = "1.0.210"
+sqlx = { version = "0.8", features = [ "postgres", "runtime-tokio" ] }

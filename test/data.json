@@ -1,0 +1,20 @@
+{
+	"start": 0,
+	"end": 1000,
+	"sort": [
+		{"sort":"asc","colId":"colonne_2"}
+	],
+	"filter": {
+		"colonne_2": {
+			"filterType":"text",
+			"type":"contains",
+			"filter":"1"
+		},
+		"colonne_1": {
+			"filterType":"text",
+			"type":"contains",
+			"filter":"2"
+		}
+	},
+	"globalSearch": "2"
+}
