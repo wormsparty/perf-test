@@ -7,6 +7,7 @@ project('cpp-test', ['cpp'],
     'cpp_std=c++20',
     'default_library=shared',
     'buildtype=release',
+    'optimization=3',
   ],
 )
 
