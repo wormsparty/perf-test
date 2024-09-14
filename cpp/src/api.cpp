@@ -39,12 +39,9 @@ std::string api_list(Document& request, string connection_string) {
         return "";
     }
 
-    Value rows(kArrayType);
-
     result r = tx.exec_params(query.str(), prepare::make_dynamic_params(prms));
     auto line = r.begin();
     int total = 0;
-    //std::vector<std::string> column_to_camel;
 
     stringstream response {};
     response << "{""data"":[";
@@ -52,16 +49,11 @@ std::string api_list(Document& request, string connection_string) {
     if (line != r.end()) {
         total = line["total"].as<int>();
 
-        /*for (auto const &field: line) {
-            column_to_camel.push_back(snake_to_camel(field.name()));
-        }*/
-
         for (; line != r.end(); line++) {
             //int i = 0;
             response << "{";
 
             for (auto const &field: line) {
-                //response << """" << column_to_camel[i++] << """:";
                 response << """" << field.name() << """:";
                 response << """" << field.c_str() << """,";
             }
