@@ -21,9 +21,9 @@ Python      0.070       0.006       0.068       0.069       0.104
 
                                  Bilan
 
-            Live-reload    Facilité    Compilation    Vitesse
-Rust        Oui            Non         Longue (dep)   1
-C++         Non            Non         Moyenne        1
-Go          Oui            Oui         Courte         1
-Python      Oui            Oui         Aucune         1/2
+            Live-reload    Facilité    Sécurité    Compilation    Vitesse
+Rust        Oui            Non         Oui         Longue (dep)   1
+Go          Oui            Oui         Oui         Courte         1
+C++         Non            Non         Non         Moyenne        1
+Python      Oui            Oui         Oui         Aucune         1/2
 
