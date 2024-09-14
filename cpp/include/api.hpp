@@ -1,8 +1,9 @@
 #ifndef __API__
 #define __API__
 
+#include <string>
 #include <rapidjson/document.h>
 
-bool api_list(rapidjson::Document& request, rapidjson::Document& response, std::string connection_string);
+std::string api_list(rapidjson::Document& request, std::string connection_string);
 
 #endif

@@ -29,18 +29,16 @@ int main()
 
     svr.Post("/api/list", [&connection_string](const httplib::Request &req, httplib::Response &res) {
         try {
-            Document request, response;
+            Document request;
             request.Parse(req.body.c_str());
 
-            if (!api_list(request, response, connection_string)) {
+            std::string response = api_list(request, connection_string);
+
+            if (response.empty()) {
                 return;
             }
 
-            StringBuffer buffer;
-            Writer<StringBuffer> writer(buffer);
-            response.Accept(writer);
-
-            res.set_content(buffer.GetString(), "application/json");
+            res.set_content(response, "application/json");
             res.set_header("Access-Control-Allow-Origin", "*");
         } catch(const std::exception &exc) {
             std::cerr << "Error occurred: " << exc.what() << std::endl;
