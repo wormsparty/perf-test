@@ -1,4 +1,4 @@
-all: watch
+all: build
 
 build:
 	./install.sh

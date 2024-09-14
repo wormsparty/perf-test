@@ -1,5 +1,7 @@
 Entités: 10'000
-Samples: 128
+Échantillons: 128
+
+                            AMD64 (mini PC)
 
             Mean        Std.Dev.    Min         Median      Max
 Rust        0.030       0.007       0.027       0.028       0.064
@@ -8,10 +10,20 @@ Go          0.036       0.007       0.028       0.034       0.069
 Python      0.064       0.004       0.061       0.063       0.089
 
 
-         Live-reload    Facilité    Compilation    Vitesse
-Rust     Oui            Non         Longue (dep)   1
-C++      Non            Non         Longue         1
-Go       Oui            Oui         Courte         1
-Python   Oui            Oui         Aucune         1/2
+                        ARM64 (Raspberry PI 5)
 
+            Mean        Std.Dev.    Min         Median      Max
+Go          0.030       0.002       0.027       0.030       0.048       
+Rust        0.032       0.002       0.030       0.031       0.046
+C++         0.035       0.002       0.034       0.035       0.054       
+Python      0.070       0.006       0.068       0.069       0.104       
+
+
+                                 Bilan
+
+            Live-reload    Facilité    Compilation    Vitesse
+Rust        Oui            Non         Longue (dep)   1
+C++         Non            Non         Moyenne        1
+Go          Oui            Oui         Courte         1
+Python      Oui            Oui         Aucune         1/2
 
