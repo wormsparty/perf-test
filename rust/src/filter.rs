@@ -29,7 +29,7 @@ pub struct Query {
     pub global_search: String,
 }
 
-pub fn filter_sort_and_page<'a>(table: &'a str, query: &'a Query, global_searchable_fields: &'a  [&'a str]) -> Result<QueryBuilder<'a, Postgres>, &'a str> {
+pub fn filter_sort_and_page<'a>(table: &'a str, query: &'a Query, global_searchable_fields: &'a [&'a str]) -> Result<QueryBuilder<'a, Postgres>, &'static str> {
     let mut builder = QueryBuilder::new(format!("
         SELECT *, COUNT(*) OVER() AS total
         FROM {}
@@ -82,7 +82,7 @@ pub fn filter_sort_and_page<'a>(table: &'a str, query: &'a Query, global_searcha
         builder.push(" AND (1 = 0");
         let search_value = &query.global_search;
 
-        // This seem to be safe from injection as the builder replaces spaces with underscores
+        // This seems to be safe from injection as the builder replaces spaces with underscores
         for field in global_searchable_fields {
             builder.push(" OR position(").push_bind(search_value.clone()).push(format!(" in {}) > 0", field));
         }
