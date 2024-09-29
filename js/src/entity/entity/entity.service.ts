@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityEntity } from '../entity/entity.entity/entity.entity';
 import { EntityRequestDto } from '../dto/entity-request.dto/entity-request.dto';
-import { Repository } from 'typeorm';
+import { Repository, Brackets, getConnection } from 'typeorm';
 
 @Injectable()
 export class EntityService {
@@ -12,10 +12,15 @@ export class EntityService {
     async find(request: EntityRequestDto): Promise<{ data: EntityEntity[], total: number}>{
     	const globalSearchableFields = [ 'colonne_1', 'colonne_2' ];
     	
+    	const entityColumns = this.entityRepository.metadata.ownColumns;
+    	
         let builder = await this.entityRepository
-	    .createQueryBuilder()
-	    .addSelect('COUNT(*) OVER ()', 'total');
-  
+	    .createQueryBuilder("e")
+	    .addSelect('COUNT(*) OVER ()', 'total')
+	    .where('1 = 1');
+
+        let paramNb = 1;
+        
         Object.keys(request.filter).forEach(key => {
             const filter = request.filter[key];
             
@@ -23,57 +28,78 @@ export class EntityService {
                 return Promise.reject("Unsupported filter type")
             }
 
-            // TODO: VERIFY KEY IS A VALID COLOMN NAME
-            if (filter.type === "equals") {
-                builder = builder.where(`${key} = :filter`, { filter: filter.filter })
-            } else if (filter.type === "notEquals") {
-                builder = builder.where(`${key} <> :filter`, { filter: filter.filter })
-            } else if (filter.type === "contains") {
-                builder = builder.where(`position(:filter in ${key}) > 0`, { filter: filter.filter })
-            } else if (filter.type === "notContains") {
-                builder = builder.where(`position(:filter in ${key}) = 0`, { filter: filter.filter })
-            } else if (filter.type === "startsWith") {
-                builder = builder.where(`${key} like :filter`, { filter: filter.filter + '%' })
-            } else if (filter.type === "endsWith") {
-                builder = builder.where(`${key} like :filter`, { filter: '%' + filter.filter })
-            } else if (filter.type === "blank") {
-                builder = builder.where(`(${key} <> '') IS NOT TRUE`)
-            } else if (filter.type === "notBlank") {
-                builder = builder.where(`${key} <> ''`)
-            } else {
-                return Promise.reject("Unsupported type")
+            if (!entityColumns.find((column) => column.propertyName === key)) {
+                return Promise.reject("Invalid column name");
             }
+            
+            let param = {};
+            
+            if (filter.type === "equals") {
+                param[`f${paramNb}`] = filter.filter;
+                builder = builder.andWhere(`${key} = :f${paramNb}`, param)
+            } else if (filter.type === "notEquals") {
+                param[`f${paramNb}`] = filter.filter;
+                builder = builder.andWhere(`${key} <> :f${paramNb}`, param)
+            } else if (filter.type === "contains") {
+                param[`f${paramNb}`] = filter.filter;
+                builder = builder.andWhere(`position(:f${paramNb} in ${key}) > 0`, param)
+            } else if (filter.type === "notContains") {
+                param[`f${paramNb}`] = filter.filter;
+                builder = builder.andWhere(`position(:f${paramNb} in ${key}) = 0`, param)
+            } else if (filter.type === "startsWith") {
+                param[`f${paramNb}`] = `${filter.filter}%`;
+                builder = builder.andWhere(`${key} like :f${paramNb}`, param)
+            } else if (filter.type === "endsWith") {
+                param[`f${paramNb}`] = `%${filter.filter}`;
+                builder = builder.andWhere(`${key} like :f${paramNb}`, param)
+            } else if (filter.type === "blank") {
+                builder = builder.andWhere(`(${key} <> '') IS NOT TRUE`)
+            } else if (filter.type === "notBlank") {
+                builder = builder.andWhere(`${key} <> ''`)
+            } else {
+                return Promise.reject("Unsupported type");
+            }
+            
+            paramNb++;
         });
 
-        // TODO: Global filter
-        /*if (request.globalSearch) {
-            builder = builder.WhereGroup(func(q *pg.Query) (*pg.Query, error) {
-                for _, field := range globalSearchableFields {
-                    q = q.WhereOr("position(? in ?) > 0", request.GlobalSearch, pg.Ident(field))
-                }
-                return q, nil
-            })
-        }*/
+        // Global filter
+        if (request.globalSearch) {
+            builder = builder.andWhere(new Brackets(qb => {
+                qb = qb.where('1 = 0');
 
-        // TODO: Sort
-        /*if len(request.Sort) > 0 {
-	    sort := request.Sort[0]
-	    dataset = dataset.Order(fmt.Sprintf("%s %s", toSnakeCase(sort.ColId), sort.Sort))
-        }*/
+                for(let field of globalSearchableFields) {
+                   qb = qb.orWhere(`position(:global in ${field}) > 0`, { global: request.globalSearch });
+                }
+                
+                return qb;
+            }));
+        }
+
+        if (request.sort.length > 0) {
+	    const sort = request.sort[0];
+	    const dir = sort.sort.toUpperCase();
+	    const validDir = [ "ASC", "DESC" ];
+	    
+	    if (validDir.indexOf(dir) === -1) {
+	        return Promise.reject("Invalid sort direction")
+	    }
+
+	    builder = builder.orderBy(sort.colId, dir as "DESC" | "ASC");
+        }
 
         // Paging
         builder = builder.skip(request.start).take(request.end - request.start);
         
         return await builder.getRawMany().then((entities) => {
             return {
+                // TODO: Can we do better than manually mapping to entity?
                 'data': entities.map(e => {
-                	    return { 'id': e.id, 'colonne_1': e.EntityEntity_colonne_1, 'colonne_2': e.EntityEntity_colonne_2 }
+                	    return { 'id': e.id, 'colonne_1': e.e_colonne_1, 'colonne_2': e.e_colonne_2 }
                 	}),
                 'total': entities.length > 0 ? entities[0].total : 0,
             };
         });
-        
-        // TODO: Retourner le total ?!
     }
 }
 
