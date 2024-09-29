@@ -95,9 +95,9 @@ export class EntityService {
             return {
                 // TODO: Can we do better than manually mapping to entity?
                 'data': entities.map(e => {
-                	    return { 'id': e.id, 'colonne_1': e.e_colonne_1, 'colonne_2': e.e_colonne_2 }
+                	    return { 'id': e.e_id, 'colonne_1': e.e_colonne_1, 'colonne_2': e.e_colonne_2 }
                 	}),
-                'total': entities.length > 0 ? entities[0].total : 0,
+                'total': entities.length > 0 ? parseInt(entities[0].total, 10) : 0,
             };
         });
     }

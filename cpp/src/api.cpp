@@ -44,27 +44,38 @@ std::string api_list(Document& request, string connection_string) {
     int total = 0;
 
     stringstream response {};
-    response << "{""data"":[";
+    response << "{\"data\":[";
 
     if (line != r.end()) {
         total = line["total"].as<int>();
 
         for (; line != r.end(); line++) {
-            //int i = 0;
             response << "{";
 
             for (auto const &field: line) {
-                response << """" << field.name() << """:";
-                response << """" << field.c_str() << """,";
+                if (strcmp(field.name(), "total") != 0) {
+                    response << "\"" << field.name() << "\":";
+
+                    if (strcmp(field.name(), "id") != 0) {
+                        response << "\"" << field.c_str() << "\",";
+                    } else {
+                        response << field.c_str() << ",";
+                    }
+                }
             }
 
-            response << "}";
+            // To back 1 char to remove the last comma
+            response.seekp(-1, response.cur);
+            response << "},";            
         }
+        
+        // To back 1 char to remove the last comma
+        response.seekp(-1, response.cur);
     }
 
     tx.commit();
 
-    response << "],""total"":" << total << "}";
+    response << "],\"total\":" << total << "}";
     return response.str();
 }
 
