@@ -7,4 +7,4 @@ build:
 	npm run build
 
 dev:
-	npm run dev
+	npm run start:debug

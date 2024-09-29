@@ -10,5 +10,6 @@
 /js/dist
 /js/node_modules
 /.venv
+/.env
 .idea
 __pycache__

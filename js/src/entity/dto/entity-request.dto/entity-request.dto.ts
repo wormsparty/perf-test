@@ -24,7 +24,7 @@ export class EntityRequestDto {
     public start: number;
 
     @IsNumber()
-    public end: string;
+    public end: number;
 
     public sort: Sort[];
 
