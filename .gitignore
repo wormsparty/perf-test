@@ -7,5 +7,8 @@
 /rust/target
 /rust/rust-test
 /rust/.env
+/js/dist
+/js/node_modules
 /.venv
+.idea
 __pycache__
