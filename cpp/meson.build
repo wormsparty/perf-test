@@ -11,6 +11,11 @@ project('cpp-test', ['cpp'],
   ],
 )
 
+cmake = import('cmake')
+opt_var = cmake.subproject_options()
+opt_var.add_cmake_defines({'SKIP_BUILD_TEST': true})
+sub_proj = cmake.subproject('libpqxx', options: opt_var)
+
 cpp_sources = [
   'src/main.cpp',
   'src/api.cpp',
@@ -22,8 +27,8 @@ cpp_sources = [
 cpp_deps = [
   dependency('cpp-httplib'),
   dependency('RapidJSON'),
-  dependency('libpqxx'),
   dependency('libconfig++'),
+  sub_proj.dependency('pqxx'),
 ]
 
 executable('cpp-test', cpp_sources,
