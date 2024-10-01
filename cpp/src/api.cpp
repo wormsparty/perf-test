@@ -3,14 +3,13 @@
 #include <sstream>
 #include <list>
 
-#include <rapidjson/rapidjson.h>
 #include <pqxx/pqxx>
 
+#include "../include/crow_all.h"
 #include "../include/api.hpp"
 #include "../include/utils.hpp"
 #include "../include/filter.hpp"
 
-using namespace rapidjson;
 using namespace std;
 using namespace pqxx;
 
@@ -19,8 +18,8 @@ list<string> global_searchable_fields = {
     "colonne_2",
 };
 
-std::string api_list(Document& request, string connection_string) {
-    std::vector<string> prms;
+std::string api_list(crow::json::rvalue& request, string connection_string) {
+    params prms;
     std::stringstream query;
 
     connection cx(connection_string);
@@ -39,43 +38,29 @@ std::string api_list(Document& request, string connection_string) {
         return "";
     }
 
-    result r = tx.exec_params(query.str(), prepare::make_dynamic_params(prms));
-    auto line = r.begin();
     int total = 0;
+    vector<crow::json::wvalue> lines{};
 
-    stringstream response {};
-    response << "{\"data\":[";
-
-    if (line != r.end()) {
-        total = line["total"].as<int>();
-
-        for (; line != r.end(); line++) {
-            response << "{";
-
-            for (auto const &field: line) {
-                if (strcmp(field.name(), "total") != 0) {
-                    response << "\"" << field.name() << "\":";
-
-                    if (strcmp(field.name(), "id") != 0) {
-                        response << "\"" << field.c_str() << "\",";
-                    } else {
-                        response << field.c_str() << ",";
-                    }
-                }
-            }
-
-            // To back 1 char to remove the last comma
-            response.seekp(-1, response.cur);
-            response << "},";            
+    auto query_result = tx.query<int, string, string, int>(query.str(), prms);
+    auto it = query_result.begin();
+    
+    if (it != query_result.end()) {
+        total = std::get<3>(*it);
+    
+        for (; it != query_result.end(); ++it) {
+            auto&& line = *it;
+            
+            lines.push_back(crow::json::wvalue({
+                {"id", std::get<0>(line)},
+                {"colonne_1", std::get<1>(line)},
+                {"colonne_2", std::get<2>(line)},
+            }));
         }
-        
-        // To back 1 char to remove the last comma
-        response.seekp(-1, response.cur);
     }
 
+    crow::json::wvalue response({{"data", lines}, {"total", total}});
     tx.commit();
 
-    response << "],\"total\":" << total << "}";
-    return response.str();
+    return response.dump();
 }
 

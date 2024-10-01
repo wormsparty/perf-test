@@ -1,14 +1,8 @@
 #include <iostream>
 
-#include <httplib.h>
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
-
+#include "../include/crow_all.h"
 #include "../include/api.hpp"
 #include "../include/config.hpp"
-
-using namespace rapidjson;
 
 int main()
 {
@@ -18,34 +12,27 @@ int main()
         return 1;
     }
 
-    httplib::Server svr;
+    crow::App<crow::CORSHandler> app;
+    app.loglevel(crow::LogLevel::Warning);
 
-    svr.Options(R"(\*)", [](const auto&, auto& res) {
-        res.set_header("Allow", "GET, POST, HEAD, OPTIONS");
-        res.set_header("Access-Control-Allow-Origin", "*");
-        res.set_header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Accept, Origin, Authorization");
-        res.set_header("Access-Control-Allow-Methods", "OPTIONS, GET, POST, HEAD");
-    });
-
-    svr.Post("/api/list", [&connection_string](const httplib::Request &req, httplib::Response &res) {
-        try {
-            Document request;
-            request.Parse(req.body.c_str());
-
-            std::string response = api_list(request, connection_string);
-
-            if (response.empty()) {
-                return;
+    auto& cors = app.get_middleware<crow::CORSHandler>();
+    cors.global()
+        .headers("X-Custom-Header", "Upgrade-Insecure-Requests")
+        .methods("POST"_method)
+        .prefix("/").origin("localhost");
+        
+    CROW_ROUTE(app, "/api/list").methods("POST"_method)(
+        [connection_string](const crow::request& req) {
+            auto request = crow::json::load(req.body);
+    
+            if (!request) {
+                return crow::response(crow::status::BAD_REQUEST);
             }
-
-            res.set_content(response, "application/json");
-            res.set_header("Access-Control-Allow-Origin", "*");
-        } catch(const std::exception &exc) {
-            std::cerr << "Error occurred: " << exc.what() << std::endl;
-            throw;
+        
+            std::string str = api_list(request, connection_string);
+            return crow::response("application/json", str);
         }
-    });
+    );
 
-    std::cout << "Listening..." << std::endl;
-    svr.listen("0.0.0.0", 8000);
+    app.port(8000).multithreaded().run();
 }

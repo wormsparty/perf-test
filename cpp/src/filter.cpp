@@ -3,20 +3,19 @@
 #include <sstream>
 #include <list>
 
-#include <rapidjson/document.h>
 #include <pqxx/pqxx>
 
+#include "../include/crow_all.h"
 #include "../include/utils.hpp"
 #include "../include/filter.hpp"
 
-using namespace rapidjson;
 using namespace std;
 using namespace pqxx;
 
-bool filter_sort_and_page(stringstream& query, vector<string>& prms, Document& request, work& tx, list<string>& global_searchable_fields) {
-    int start = request["start"].GetInt();
-    int end = request["end"].GetInt();
-    std::string global_search = request["globalSearch"].GetString();
+bool filter_sort_and_page(stringstream& query, params& prms, crow::json::rvalue& request, work& tx, list<string>& global_searchable_fields) {
+    int start(request["start"]);
+    int end(request["end"]);
+    std::string global_search(request["globalSearch"]);
 
     query << " WHERE 1 = 1 ";
 
@@ -28,16 +27,16 @@ bool filter_sort_and_page(stringstream& query, vector<string>& prms, Document& r
         }
 
         query << ") ";
-        prms.push_back(global_search);
+        prms.append(global_search);
     }
 
-    for(auto& el: request["filter"].GetObject()) {
-        string field = el.name.GetString();
-        auto& filter_value = el.value;
+    for(auto& el: request["filter"].keys()) {
+        string field = el;
+        auto& filter_value = request["filter"][field];
 
-        string filter = filter_value["filter"].GetString();
-        string filter_type = filter_value["filterType"].GetString();
-        string type = filter_value["type"].GetString();
+        string filter(filter_value["filter"]);
+        string filter_type(filter_value["filterType"]);
+        string type(filter_value["type"]);
         auto col = tx.esc(camel_to_snake(field));
 
         if (!is_valid_col_name(col)) {
@@ -74,39 +73,39 @@ bool filter_sort_and_page(stringstream& query, vector<string>& prms, Document& r
         }
 
         if (type != "blank" && type != "notBlank") {
-            prms.push_back(filter);
+            prms.append(filter);
         }
     }
 
-    auto sort = request["sort"].GetArray();
-    auto first_sort = sort.Begin();
+    auto sort = request["sort"];
 
-    if (first_sort != sort.End()) {
-        auto first = first_sort->GetObject();
-        string colId = first["colId"].GetString();
-        string sort = to_lower_case(first["sort"].GetString());
+    if (sort.size() > 0) {
+        auto first = sort[0];
+        string col_id(first["colId"]);
+        string sort_with_case(first["sort"]);
+        string sort_lower(to_lower_case(sort_with_case));
 
-        auto col_snake = tx.esc(camel_to_snake(colId));
+        auto col_snake = tx.esc(camel_to_snake(col_id));
 
         if (!is_valid_col_name(col_snake)) {
             cerr << "Invalid column name: " << col_snake << endl;
             return false;
         }
 
-        if (sort != "asc" && sort != "desc") {
+        if (sort_lower != "asc" && sort_lower != "desc") {
             cerr << "Invalid sort direction" << endl;
             return false;
         }
 
         // We shouldn't be able to inject anything since only a-z and _ are allowed
-        query << "ORDER BY " << col_snake << " " << tx.esc(sort) << " ";
+        query << "ORDER BY " << col_snake << " " << tx.esc(sort_lower) << " ";
     }
 
     query << "OFFSET $" << prms.size() + 1 << " "
           << "LIMIT $" << prms.size() + 2 << " ";
 
-    prms.push_back(to_string(start));
-    prms.push_back(to_string(end - start));
+    prms.append(to_string(start));
+    prms.append(to_string(end - start));
 
     return true;
 }

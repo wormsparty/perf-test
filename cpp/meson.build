@@ -25,8 +25,6 @@ cpp_sources = [
 ]
 
 cpp_deps = [
-  dependency('cpp-httplib'),
-  dependency('RapidJSON'),
   dependency('libconfig++'),
   sub_proj.dependency('pqxx'),
 ]
