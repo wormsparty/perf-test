@@ -1,30 +1,30 @@
 package main
 
 import (
-	"fmt"
 	"errors"
-	
+	"fmt"
+
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
 )
 
 type Sort struct {
-	Sort string `json:"sort"`
+	Sort  string `json:"sort"`
 	ColId string `json:"colId"`
 }
 
 type Filter struct {
 	FilterType string `json:"filterType"`
-	Type string `json:"type"`
-	Filter string `json:"filter"`
+	Type       string `json:"type"`
+	Filter     string `json:"filter"`
 }
 
 type Request struct {
-	Start int `json:"start"`
-	End int `json:"end"`
-	Sort []Sort `json:"sort"`
-	Filter map[string]Filter `json:"filter"`
-	GlobalSearch string `json:"globalSearch"`
+	Start        int               `json:"start"`
+	End          int               `json:"end"`
+	Sort         []Sort            `json:"sort"`
+	Filter       map[string]Filter `json:"filter"`
+	GlobalSearch string            `json:"globalSearch"`
 }
 
 func filterSortAndPage(dataset *orm.Query, request Request) (*orm.Query, error) {
@@ -33,7 +33,7 @@ func filterSortAndPage(dataset *orm.Query, request Request) (*orm.Query, error) 
 		if filter.FilterType != "text" {
 			return nil, errors.New("Unsupported filter type")
 		}
-		
+
 		col := pg.Ident(toSnakeCase(key))
 
 		if filter.Type == "equals" {
@@ -56,7 +56,7 @@ func filterSortAndPage(dataset *orm.Query, request Request) (*orm.Query, error) 
 			return nil, errors.New("Unsupported type")
 		}
 	}
-	
+
 	// Global filter
 	if len(request.GlobalSearch) >= 0 {
 		dataset = dataset.WhereGroup(func(q *pg.Query) (*pg.Query, error) {
@@ -66,7 +66,7 @@ func filterSortAndPage(dataset *orm.Query, request Request) (*orm.Query, error) 
 			return q, nil
 		})
 	}
-	
+
 	// Sort
 	if len(request.Sort) > 0 {
 		sort := request.Sort[0]

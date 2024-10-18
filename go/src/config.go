@@ -3,24 +3,24 @@ package main
 import (
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
-    	"github.com/gin-gonic/gin"
 )
 
 type Config struct {
-    Server struct {
-        Host string `yaml:"host"`
-        Port string `yaml:"port"`
-	CorsOrigins []string `yaml:"cors_origins"`
-	CorsAllowAll bool `yaml:"cors_allow_all"`
-	Mode string `yaml:"mode"`
-    } `yaml:"server"`
-    Database struct {
-	Address string `yaml:"address"`
-	Username string `yaml:"user"`
-        Password string `yaml:"pass"`
-	Name string `yaml:"name"`
-    } `yaml:"database"`
+	Server struct {
+		Host         string   `yaml:"host"`
+		Port         string   `yaml:"port"`
+		CorsOrigins  []string `yaml:"cors_origins"`
+		CorsAllowAll bool     `yaml:"cors_allow_all"`
+		Mode         string   `yaml:"mode"`
+	} `yaml:"server"`
+	Database struct {
+		Address  string `yaml:"address"`
+		Username string `yaml:"user"`
+		Password string `yaml:"pass"`
+		Name     string `yaml:"name"`
+	} `yaml:"database"`
 }
 
 func setConfig(cfg *Config) gin.HandlerFunc {
@@ -31,16 +31,16 @@ func setConfig(cfg *Config) gin.HandlerFunc {
 }
 
 func readConfig(cfg *Config) {
-    f, err := os.Open("config.yml")
-    if err != nil {
-        panic(err)
-    }
-    defer f.Close()
+	f, err := os.Open("config.yml")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
 
-    decoder := yaml.NewDecoder(f)
-    err = decoder.Decode(cfg)
+	decoder := yaml.NewDecoder(f)
+	err = decoder.Decode(cfg)
 
-    if err != nil {
-        panic(err)
-    }
-} 
+	if err != nil {
+		panic(err)
+	}
+}
