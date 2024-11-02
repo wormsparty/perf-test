@@ -1,36 +1,35 @@
-import { IsString, IsNumber, MaxLength } from "class-validator";
+import { IsString, IsNumber, MaxLength } from 'class-validator';
 
 class Sort {
-    @IsString()
-    public sort: string;
+  @IsString()
+  public sort: string;
 
-    @IsString()
-    public colId: string;
+  @IsString()
+  public colId: string;
 }
 
 class Filter {
-    @IsString()
-    public filterType: string;
-    
-    @IsString()
-    public type: string;
+  @IsString()
+  public filterType: string;
 
-    @IsString()
-    public filter: string;
+  @IsString()
+  public type: string;
+
+  @IsString()
+  public filter: string;
 }
 
 export class EntityRequestDto {
-    @IsNumber()
-    public start: number;
+  @IsNumber()
+  public start: number;
 
-    @IsNumber()
-    public end: number;
+  @IsNumber()
+  public end: number;
 
-    public sort: Sort[];
+  public sort: Sort[];
 
-    public filter: Record<string, Filter>;
-    
-    @IsString()
-    public globalSearch: string;
+  public filter: Record<string, Filter>;
+
+  @IsString()
+  public globalSearch: string;
 }
-
