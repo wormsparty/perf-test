@@ -46,8 +46,13 @@ async fn list(query: web::Json<dto::FilterQuery>, data: web::Data<AppState>) -> 
         ("colonne_2".to_string(), entity::Column::Colonne2),
     ]);
 
-    let response = get_entities_with_total::<Entity, EntityResultRow>(&query, &entity_global_searchable, &entity_column_by_name, &conn).await.unwrap();
-    HttpResponse::Ok().json(response)
+    match get_entities_with_total::<Entity, EntityResultRow>(&query, &entity_global_searchable, &entity_column_by_name, &conn).await {
+        Ok(response) => HttpResponse::Ok().json(response),
+        Err(err) => {
+            println!("{}", err);
+            HttpResponse::InternalServerError().body("internal server error")
+        },
+    }
 }
 
 #[get("/api/orm")]
@@ -57,12 +62,15 @@ async fn get(data: web::Data<AppState>) -> impl Responder {
     let response = Entity::find()
         .filter(entity::Column::Colonne1.like("abc%"))
         .all(conn)
-        .await
-        .ok();
+        .await;
 
-    println!("{:?}", response);
-
-    HttpResponse::Ok().json(response)
+    match response {
+        Ok(response) => HttpResponse::Ok().json(response),
+        Err(err) => {
+            println!("{}", err);
+            HttpResponse::InternalServerError().body("internal server error")
+        },
+    }
 }
 
 #[actix_web::main]

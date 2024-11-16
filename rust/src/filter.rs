@@ -21,7 +21,8 @@ pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
 
     // Filter
     for (name, filter) in &filter.filter {
-        let column = Expr::col(*column_by_name.get(name).unwrap());
+        let column_name = column_by_name.get(name).ok_or(DbErr::Custom("invalid column name".to_string()))?;
+        let column = Expr::col(*column_name);
 
         match filter.operator.as_str() {
             "equals" => query = query.and_where(column.eq(filter.filter.clone())),
@@ -53,7 +54,7 @@ pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
     // Sort
     if filter.sort.len() > 0 {
         let sort = &filter.sort.first().unwrap();
-        let column = column_by_name.get(&sort.col_id).unwrap();
+        let column = column_by_name.get(&sort.col_id).ok_or(DbErr::Custom("invalid column name".to_string()))?;
 
         query = query.order_by(
             *column,
