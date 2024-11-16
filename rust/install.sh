@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export PATH="$PATH:$HOME/.cargo/bin"
+
 if ! which cargo > /dev/null 2>&1; then
 	curl https://sh.rustup.rs -sSf | sh
 fi

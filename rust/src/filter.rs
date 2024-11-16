@@ -1,111 +1,112 @@
 use std::collections::HashMap;
-use serde::Deserialize;
-use convert_case::{Case, Casing};
-use sqlx::{Postgres, query_builder::QueryBuilder};
+use sea_orm::{sea_query::{Alias, Expr, PostgresQueryBuilder, Query}, DatabaseConnection, DbBackend, DbErr, EntityTrait, FromQueryResult, Iterable, Order, Statement};
+use sea_orm::sea_query::extension::postgres::PgExpr;
+use serde::{Deserialize};
 
 #[derive(Deserialize)]
-pub struct QuerySort {
+pub struct Sort {
     #[serde(rename = "colId")]
     pub col_id: String,
     pub sort: String,
 }
 
 #[derive(Deserialize)]
-pub struct QueryFilter {
-    #[serde(rename = "filterType")]
-    pub filter_type: String,
+pub struct FieldFilter {
     #[serde(rename = "type")]
-    pub kind: String,
+    pub operator: String,
     pub filter: String,
 }
 
 #[derive(Deserialize)]
-pub struct Query {
-    pub start: i64,
-    pub end: i64,
-    pub filter: HashMap<String, QueryFilter>,
-    pub sort: Vec<QuerySort>,
+pub struct FilterQuery {
+    pub start: u64,
+    pub end: u64,
+    pub filter: HashMap<String, FieldFilter>,
+    pub sort: Vec<Sort>,
     #[serde(rename = "globalSearch")]
     pub global_search: String,
 }
 
-pub fn filter_sort_and_page<'a>(table: &'a str, query: &'a Query, global_searchable_fields: &'a [&'a str]) -> Result<QueryBuilder<'a, Postgres>, &'static str> {
-    let mut builder = QueryBuilder::new(format!("
-        SELECT *, COUNT(*) OVER() AS total
-        FROM {}
-        WHERE 1 = 1
-    ", table));
+pub trait EntityWithTotal: FromQueryResult {
+    #[allow(dead_code)]
+    fn total(&self) -> i64;
+}
+
+pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
+    filter: &FilterQuery,
+    global_searchable_fields: &Vec<T::Column>,
+    get_column_by_name_fn: impl Fn(&str) -> Result<T::Column, DbErr>,
+    db: &DatabaseConnection,
+) -> Result<Vec<U>, DbErr> {
+    let mut query = Query::select();
+
+    let mut query = query
+        .columns(T::Column::iter())
+        .expr_as(
+            Expr::cust("COUNT(*) OVER()"),
+            Alias::new("total"),
+        )
+        .from(T::default());
 
     // Filter
-    for (field, filter) in &query.filter {
-        if filter.filter_type != "text" {
-            return Err("Unsupported filter type")
-        }
+    for (name, filter) in &filter.filter {
+        let column = Expr::col(get_column_by_name_fn(name).ok().unwrap());
 
-        builder.push(" AND ");
-
-        let col = field.to_case(Case::Snake);
-        let filter_val;
-
-        if filter.kind == "startsWith" {
-            filter_val = format!("{}%", filter.filter);
-        } else if filter.kind == "endsWith" {
-            filter_val = format!("%{}", filter.filter);
-        } else {
-            filter_val = filter.filter.clone();
-        }
-
-        // These seem to be safe from injection as the builder replaces spaces with underscores
-        if filter.kind == "equals" {
-            builder.push(format!("{} = ", col)).push_bind(filter_val);
-        } else if filter.kind == "notEquals" {
-            builder.push(format!("{} <> ", col)).push_bind(filter_val);
-        } else if filter.kind == "contains" {
-            builder.push("position(").push_bind(filter_val).push(format!(" in {}) > 0", col));
-        } else if filter.kind == "notContains" {
-            builder.push("position(").push_bind(filter_val).push(format!(" in {}) = 0", col));
-        } else if filter.kind == "startsWith" {
-            builder.push(format!("{} ilike ", col)).push_bind(filter_val);
-        } else if filter.kind == "endsWith" {
-            builder.push(format!("{} ilike ", col)).push_bind(filter_val);
-        } else if filter.kind == "blank" {
-            builder.push(format!("({} <> '') IS NOT TRUE", col));
-        } else if filter.kind == "notBlank" {
-            builder.push(format!("{} <> ''", col));
-        } else {
-            return Err("Unsupported type");
+        match filter.operator.as_str() {
+            "equals" => query = query.and_where(column.eq(filter.filter.clone())),
+            "notEquals" => query = query.and_where(column.ne(filter.filter.clone())),
+            "contains" => query = query.and_where(column.ilike(format!("%{}%", filter.filter))),
+            "notContains" => query = query.and_where(column.ilike(format!("%{}%", filter.filter)).not()),
+            "startsWith" => query = query.and_where(column.ilike(format!("{}%", filter.filter))),
+            "endsWith" => query = query.and_where(column.ilike(format!("%{}", filter.filter))),
+            "blank" => query = query.and_where(column.is_null()),
+            "notBlank" => query = query.and_where(column.is_not_null()),
+            _ => return Err(DbErr::Custom(format!(
+                "Opérateur non supporté: {}.",
+                filter.operator
+            ))),
         }
     }
 
     // Global filter
-    if !query.global_search.is_empty() {
-        builder.push(" AND (1 = 0");
-        let search_value = &query.global_search;
+    if !filter.global_search.is_empty() {
+        let mut or_condition = Expr::col(global_searchable_fields[0]).ilike(format!("%{}%", filter.global_search));
 
-        // This seems to be safe from injection as the builder replaces spaces with underscores
-        for field in global_searchable_fields {
-            builder.push(" OR position(").push_bind(search_value.clone()).push(format!(" in {}) > 0", field));
+        for field in &global_searchable_fields[1..] {
+            or_condition = or_condition.or(Expr::col(*field).ilike(format!("%{}%", filter.global_search)));
         }
 
-        builder.push(")");
+        query = query.and_where(or_condition);
     }
 
     // Sort
-    if query.sort.len() > 0 {
-        let sort = &query.sort[0];
-        let dir = sort.sort.to_case(Case::Lower);
+    if filter.sort.len() > 0 {
+        let sort = &filter.sort.first().unwrap();
+        let column = get_column_by_name_fn(&sort.col_id).ok().unwrap();
 
-        // The column name is safe from injection, but not the direction
-        if dir != "asc" && dir != "desc" {
-            return Err("Invalid direction");
-        }
-
-        builder.push(format!(" ORDER BY {} {}", sort.col_id.to_case(Case::Snake), dir));
+        query = query.order_by(
+            column,
+            if sort.sort.to_lowercase() == "asc" { Order::Asc } else { Order::Desc },
+        );
     }
 
-    // Page
-    builder.push(" OFFSET ").push_bind(query.start)
-           .push(" LIMIT ").push_bind(query.end - query.start);
+    // Paging
+    query = query.offset(filter.start).limit(filter.end - filter.start);
 
-    Ok(builder)
+    // Execute query
+    let (sql, values) = query.build(PostgresQueryBuilder);
+
+    // For debugging: print the query
+    // println!("{}", sql);
+    // println!("{:?}", values);
+
+    let rows: Vec<U> = U::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        &sql,
+        values,
+    ))
+        .all(db)
+        .await?;
+
+    Ok(rows)
 }
