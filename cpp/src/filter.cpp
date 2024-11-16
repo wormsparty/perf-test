@@ -23,11 +23,11 @@ bool filter_sort_and_page(stringstream& query, params& prms, crow::json::rvalue&
         query << "AND (1 = 0 ";
 
         for (auto& field: global_searchable_fields) {
-            query << "OR position($" << prms.size() + 1 << " in " << tx.esc(field) << ") > 0 ";
+            query << "OR " << tx.esc(field) << " ILIKE $" << prms.size() + 1 << " ";
         }
 
         query << ") ";
-        prms.append(global_search);
+        prms.append("%" + global_search + "%");
     }
 
     for(auto& el: request["filter"].keys()) {
@@ -54,14 +54,16 @@ bool filter_sort_and_page(stringstream& query, params& prms, crow::json::rvalue&
         } else if (type == "notEquals") {
             query << "AND (" << col << " <> $" << prms.size() + 1 << ") ";
         } else if (type == "contains") {
-            query << "AND (position($" << prms.size() + 1 << " in " << col << ") > 0) ";
+            query << "AND (" << col << " ILIKE $" << prms.size() + 1 << ") ";
+            filter = '%' + filter + '%';
         } else if (type == "notContains") {
-            query << "AND (position($" << prms.size() + 1 << " in " << col << ") = 0) ";
+            query << "AND NOT (" << col << " ILIKE $" << prms.size() + 1 << ") ";
+            filter = '%' + filter + '%';
         } else if (type == "startsWith") {
-            query << "AND (" << col << " LIKE $" << prms.size() + 1 << ") ";
+            query << "AND (" << col << " ILIKE $" << prms.size() + 1 << ") ";
             filter = filter + '%';
         } else if (type == "endsWith") {
-            query << "AND (" << col << " LIKE $" << prms.size() + 1 << ") ";
+            query << "AND (" << col << " ILIKE $" << prms.size() + 1 << ") ";
             filter = '%' + filter;
         } else if (type == "blank") {
             query << "AND (" << col << " <> '') IS NOT TRUE ";

@@ -41,13 +41,13 @@ func filterSortAndPage(dataset *orm.Query, request Request) (*orm.Query, error) 
 		} else if filter.Type == "notEquals" {
 			dataset = dataset.Where("? <> ?", col, filter.Filter)
 		} else if filter.Type == "contains" {
-			dataset = dataset.Where("position(? in ?) > 0", filter.Filter, col)
+			dataset = dataset.Where("? ilike ?", col, fmt.Sprintf("%%%s%%", filter.Filter))
 		} else if filter.Type == "notContains" {
-			dataset = dataset.Where("position(? in ?) = 0", filter.Filter, col)
+			dataset = dataset.Where("NOT ? ilike ?", col, fmt.Sprintf("%%%s%%", filter.Filter))
 		} else if filter.Type == "startsWith" {
-			dataset = dataset.Where("? like ?", col, fmt.Sprintf("%s%%", filter.Filter))
+			dataset = dataset.Where("? ilike ?", col, fmt.Sprintf("%s%%", filter.Filter))
 		} else if filter.Type == "endsWith" {
-			dataset = dataset.Where("? like ?", col, fmt.Sprintf("%%%s", filter.Filter))
+			dataset = dataset.Where("? ilike ?", col, fmt.Sprintf("%%%s", filter.Filter))
 		} else if filter.Type == "blank" {
 			dataset = dataset.Where("(? <> '') IS NOT TRUE", col)
 		} else if filter.Type == "notBlank" {

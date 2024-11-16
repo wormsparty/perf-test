@@ -12,8 +12,4 @@ if ! which go > /dev/null 2>&1; then
 	done
 fi
 
-if [ ! -f "$GOPATH/bin/air" ]; then
-	go install github.com/air-verse/air@latest
-fi
-
-"$GOPATH/bin/air" --build.cmd "./build.sh" --build.bin "./main"
+go build -o main ./src

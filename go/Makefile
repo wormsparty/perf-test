@@ -1,7 +1,7 @@
 all: main
 
 main: src/*.go
-	go build -o main ./src
+	./build.sh
 
 run: main
 	./main

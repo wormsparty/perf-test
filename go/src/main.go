@@ -37,5 +37,7 @@ func main() {
 
 	router.POST("/api/list", list)
 
+	fmt.Printf("Ready")
+
 	router.Run(fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port))
 }

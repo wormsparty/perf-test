@@ -45,23 +45,17 @@ export class EntityService {
         param[`f${paramNb}`] = filter.filter;
         builder = builder.andWhere(`${key} <> :f${paramNb}`, param);
       } else if (filter.type === 'contains') {
-        param[`f${paramNb}`] = filter.filter;
-        builder = builder.andWhere(
-          `position(:f${paramNb} in ${key}) > 0`,
-          param,
-        );
+        param[`f${paramNb}`] = `%${filter.filter}%`;
+        builder = builder.andWhere(`${key} ilike :f${paramNb}`, param);
       } else if (filter.type === 'notContains') {
-        param[`f${paramNb}`] = filter.filter;
-        builder = builder.andWhere(
-          `position(:f${paramNb} in ${key}) = 0`,
-          param,
-        );
+        param[`f${paramNb}`] = `%${filter.filter}%`;
+        builder = builder.andWhere(`not ${key} ilike :f${paramNb}`, param);
       } else if (filter.type === 'startsWith') {
         param[`f${paramNb}`] = `${filter.filter}%`;
-        builder = builder.andWhere(`${key} like :f${paramNb}`, param);
+        builder = builder.andWhere(`${key} ilike :f${paramNb}`, param);
       } else if (filter.type === 'endsWith') {
         param[`f${paramNb}`] = `%${filter.filter}`;
-        builder = builder.andWhere(`${key} like :f${paramNb}`, param);
+        builder = builder.andWhere(`${key} ilike :f${paramNb}`, param);
       } else if (filter.type === 'blank') {
         builder = builder.andWhere(`(${key} <> '') IS NOT TRUE`);
       } else if (filter.type === 'notBlank') {
@@ -80,8 +74,8 @@ export class EntityService {
           qb = qb.where('1 = 0');
 
           for (const field of globalSearchableFields) {
-            qb = qb.orWhere(`position(:global in ${field}) > 0`, {
-              global: request.globalSearch,
+            qb = qb.orWhere(`${field} ilike :global`, {
+              global: `%${request.globalSearch}%`,
             });
           }
 

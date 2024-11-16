@@ -65,9 +65,9 @@ pub fn filter_sort_and_page<'a>(table: &'a str, query: &'a Query, global_searcha
         } else if filter.kind == "notContains" {
             builder.push("position(").push_bind(filter_val).push(format!(" in {}) = 0", col));
         } else if filter.kind == "startsWith" {
-            builder.push(format!("{} like ", col)).push_bind(filter_val);
+            builder.push(format!("{} ilike ", col)).push_bind(filter_val);
         } else if filter.kind == "endsWith" {
-            builder.push(format!("{} like ", col)).push_bind(filter_val);
+            builder.push(format!("{} ilike ", col)).push_bind(filter_val);
         } else if filter.kind == "blank" {
             builder.push(format!("({} <> '') IS NOT TRUE", col));
         } else if filter.kind == "notBlank" {
