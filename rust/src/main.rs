@@ -1,29 +1,20 @@
 mod entities;
 mod filter;
+mod dto;
 
+use std::collections::HashMap;
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
 use dotenvy::dotenv;
-use sea_orm::{Database, DatabaseConnection, DbErr, FromQueryResult};
+use sea_orm::{Database, DatabaseConnection, FromQueryResult};
 use serde::Serialize;
+use crate::dto::EntityWithTotal;
 use crate::entities::entity;
 use crate::entities::entity::Entity;
-use crate::filter::{get_entities_with_total, EntityWithTotal};
+use crate::filter::{get_entities_with_total};
 
 #[derive(Debug, Clone)]
 struct AppState {
     conn: DatabaseConnection,
-}
-
-#[derive(Serialize, Debug)]
-struct PaginatedResponse<T> {
-    data: Vec<T>,
-    total: i64,
-}
-
-impl<T> PaginatedResponse<T> {
-    fn new(data: Vec<T>, total: i64) -> Self {
-        PaginatedResponse { data, total }
-    }
 }
 
 #[derive(Debug, FromQueryResult, Serialize)]
@@ -42,7 +33,7 @@ impl EntityWithTotal for EntityResultRow {
 }
 
 #[post("/api/list")]
-async fn list(query: web::Json<filter::FilterQuery>, data: web::Data<AppState>) -> impl Responder {
+async fn list(query: web::Json<dto::FilterQuery>, data: web::Data<AppState>) -> impl Responder {
     let conn = &data.conn;
 
     let entity_global_searchable = vec![
@@ -50,19 +41,12 @@ async fn list(query: web::Json<filter::FilterQuery>, data: web::Data<AppState>) 
         entity::Column::Colonne2
     ];
 
-    pub fn entity_get_column_by_name(column_name: &str) -> Result<entity::Column, DbErr> {
-        match column_name {
-            "colonne_1" => Ok(entity::Column::Colonne1),
-            "colonne_2" => Ok(entity::Column::Colonne2),
-            _ => Err(DbErr::Custom("Column name not recognized".to_string())),
-        }
-    }
+    let entity_column_by_name = HashMap::from([
+        ("colonne_1".to_string(), entity::Column::Colonne1),
+        ("colonne_2".to_string(), entity::Column::Colonne2),
+    ]);
 
-    let result = get_entities_with_total::<Entity, EntityResultRow>(&query, &entity_global_searchable, entity_get_column_by_name, &conn).await.unwrap();
-    let total = result.first().map(|row| row.total).unwrap_or(0);
-
-    let response = PaginatedResponse::new(result, total);
-
+    let response = get_entities_with_total::<Entity, EntityResultRow>(&query, &entity_global_searchable, &entity_column_by_name, &conn).await.unwrap();
     HttpResponse::Ok().json(response)
 }
 

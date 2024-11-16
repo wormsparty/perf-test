@@ -1,43 +1,14 @@
 use std::collections::HashMap;
-use sea_orm::{sea_query::{Alias, Expr, PostgresQueryBuilder, Query}, DatabaseConnection, DbBackend, DbErr, EntityTrait, FromQueryResult, Iterable, Order, Statement};
+use sea_orm::{sea_query::{Alias, Expr, PostgresQueryBuilder, Query}, DatabaseConnection, DbBackend, DbErr, EntityTrait, Iterable, Order, Statement};
 use sea_orm::sea_query::extension::postgres::PgExpr;
-use serde::{Deserialize};
-
-#[derive(Deserialize)]
-pub struct Sort {
-    #[serde(rename = "colId")]
-    pub col_id: String,
-    pub sort: String,
-}
-
-#[derive(Deserialize)]
-pub struct FieldFilter {
-    #[serde(rename = "type")]
-    pub operator: String,
-    pub filter: String,
-}
-
-#[derive(Deserialize)]
-pub struct FilterQuery {
-    pub start: u64,
-    pub end: u64,
-    pub filter: HashMap<String, FieldFilter>,
-    pub sort: Vec<Sort>,
-    #[serde(rename = "globalSearch")]
-    pub global_search: String,
-}
-
-pub trait EntityWithTotal: FromQueryResult {
-    #[allow(dead_code)]
-    fn total(&self) -> i64;
-}
+use crate::dto::{EntityWithTotal, FilterQuery, PaginatedResponse};
 
 pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
     filter: &FilterQuery,
     global_searchable_fields: &Vec<T::Column>,
-    get_column_by_name_fn: impl Fn(&str) -> Result<T::Column, DbErr>,
+    column_by_name: &HashMap<String, T::Column>,
     db: &DatabaseConnection,
-) -> Result<Vec<U>, DbErr> {
+) -> Result<PaginatedResponse<U>, DbErr> {
     let mut query = Query::select();
 
     let mut query = query
@@ -50,7 +21,7 @@ pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
 
     // Filter
     for (name, filter) in &filter.filter {
-        let column = Expr::col(get_column_by_name_fn(name).ok().unwrap());
+        let column = Expr::col(*column_by_name.get(name).unwrap());
 
         match filter.operator.as_str() {
             "equals" => query = query.and_where(column.eq(filter.filter.clone())),
@@ -82,10 +53,10 @@ pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
     // Sort
     if filter.sort.len() > 0 {
         let sort = &filter.sort.first().unwrap();
-        let column = get_column_by_name_fn(&sort.col_id).ok().unwrap();
+        let column = column_by_name.get(&sort.col_id).unwrap();
 
         query = query.order_by(
-            column,
+            *column,
             if sort.sort.to_lowercase() == "asc" { Order::Asc } else { Order::Desc },
         );
     }
@@ -108,5 +79,7 @@ pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
         .all(db)
         .await?;
 
-    Ok(rows)
+    let total = rows.first().map(|row| row.total()).unwrap_or(0);
+
+    Ok(PaginatedResponse::new(rows, total))
 }
