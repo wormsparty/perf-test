@@ -3,9 +3,9 @@ mod filter;
 mod dto;
 
 use std::collections::HashMap;
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use dotenvy::dotenv;
-use sea_orm::{Database, DatabaseConnection, FromQueryResult};
+use sea_orm::{ColumnTrait, Database, DatabaseConnection, EntityTrait, QueryFilter, FromQueryResult};
 use serde::Serialize;
 use crate::dto::EntityWithTotal;
 use crate::entities::entity;
@@ -50,6 +50,21 @@ async fn list(query: web::Json<dto::FilterQuery>, data: web::Data<AppState>) -> 
     HttpResponse::Ok().json(response)
 }
 
+#[get("/api/orm")]
+async fn get(data: web::Data<AppState>) -> impl Responder {
+    let conn = &data.conn;
+
+    let response = Entity::find()
+        .filter(entity::Column::Colonne1.like("abc%"))
+        .all(conn)
+        .await
+        .ok();
+
+    println!("{:?}", response);
+
+    HttpResponse::Ok().json(response)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -63,6 +78,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .service(list)
+            .service(get)
             .app_data(web::Data::new(state.clone()))
     })
         .bind(("0.0.0.0", 8000))?
