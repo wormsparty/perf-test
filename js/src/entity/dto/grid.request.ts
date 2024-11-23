@@ -19,7 +19,7 @@ class Filter {
   public filter: string;
 }
 
-export class EntityRequestDto {
+export class GridRequest {
   @IsNumber()
   public start: number;
 

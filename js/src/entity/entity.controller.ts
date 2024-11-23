@@ -1,7 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { EntityService } from './entity.service';
 import { EntityEntity } from './entity.entity';
-import { EntityRequestDto } from './dto/entity-request.dto';
+import { GridRequest } from './dto/grid.request';
 
 @Controller('api/list')
 export class EntityController {
@@ -9,7 +9,7 @@ export class EntityController {
 
   @Post()
   public postEntity(
-    @Body() request: EntityRequestDto,
+    @Body() request: GridRequest,
   ): Promise<{ data: EntityEntity[]; total: number }> {
     return this.entityServices.find(request);
   }
