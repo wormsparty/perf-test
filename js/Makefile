@@ -1,7 +1,8 @@
 all: start
 
 start: 
-	npm run start
+	npm run build
+	NODE_ENV=production node dist/main.js
 
 build:
 	npm run build

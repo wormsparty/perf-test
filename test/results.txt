@@ -10,15 +10,6 @@
 
 
 
-                           Mini PC, DB locale
-
-            Mean        Std.Dev.    Min         Median      Max
-Go          0.042       0.001       0.041       0.042       0.048
-Rust        0.045       0.001       0.044       0.045       0.053
-JS          0.056       0.002       0.052       0.055       0.070
-Python      0.064       0.004       0.061       0.063       0.082
-
-
                           PC gaming, DB locale
 
             Mean        Std.Dev.    Min         Median      Max
@@ -33,7 +24,9 @@ Django      0.046       0.011       0.023       0.047       0.071
                    DB sur PC Gaming, test sur mini PC
 
             Mean        Std.Dev.    Min         Median      Max
-Go          0.045       0.010       0.024       0.048       0.057
-Rust        0.053       0.005       0.036       0.053       0.069
-JS          0.066       0.008       0.043       0.066       0.095
-Python      0.089       0.011       0.051       0.089       0.114
+Rust        0.050       0.009       0.025       0.051       0.066
+Go          0.051       0.006       0.029       0.052       0.061
+JS          0.063       0.004       0.049       0.065       0.073
+FastApi     0.077       0.012       0.047       0.080       0.116
+Django      0.091       0.006       0.075       0.091       0.106
+

@@ -1,3 +1,4 @@
-Django==5.1.1
-inflection==0.5.1
-psycopg2==2.9.9
+Django
+inflection
+psycopg2
+gunicorn
