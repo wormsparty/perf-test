@@ -17,16 +17,16 @@ pub struct FieldFilter {
 }
 
 #[derive(Deserialize)]
-pub struct FilterQuery {
-    pub start: u64,
-    pub end: u64,
+pub struct GridFilter {
+    pub start: i64,
+    pub end: i64,
     pub filter: HashMap<String, FieldFilter>,
     pub sort: Vec<Sort>,
     #[serde(rename = "globalSearch")]
     pub global_search: String,
 }
 
-pub trait EntityWithTotal: FromQueryResult {
+pub trait WithTotalTrait: FromQueryResult {
     #[allow(dead_code)]
     fn total(&self) -> i64;
 }

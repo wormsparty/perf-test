@@ -3,11 +3,12 @@ mod filter;
 mod dto;
 
 use std::collections::HashMap;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use dotenvy::dotenv;
-use sea_orm::{ColumnTrait, Database, DatabaseConnection, EntityTrait, QueryFilter, FromQueryResult};
 use serde::Serialize;
-use crate::dto::EntityWithTotal;
+use actix_cors::Cors;
+use actix_web::http::header;
+use actix_web::{post, get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use sea_orm::{Database, DatabaseConnection, EntityTrait, FromQueryResult, ColumnTrait, QueryFilter};
 use crate::entities::entity;
 use crate::entities::entity::Entity;
 use crate::filter::{get_entities_with_total};
@@ -26,14 +27,14 @@ pub struct EntityResultRow {
     pub total: i64,
 }
 
-impl EntityWithTotal for EntityResultRow {
+impl dto::WithTotalTrait for EntityResultRow {
     fn total(&self) -> i64 {
         self.total
     }
 }
 
 #[post("/api/list")]
-async fn list(query: web::Json<dto::FilterQuery>, data: web::Data<AppState>) -> impl Responder {
+async fn list(query: web::Json<dto::GridFilter>, data: web::Data<AppState>) -> impl Responder {
     let conn = &data.conn;
 
     let entity_global_searchable = vec![
@@ -73,21 +74,64 @@ async fn get(data: web::Data<AppState>) -> impl Responder {
     }
 }
 
+#[post("/api/login")]
+async fn login(req: HttpRequest) -> impl Responder {
+    let user_id = req
+        .headers()
+        .get("Userid")
+        .and_then(|header_value| header_value.to_str().ok())
+        .unwrap_or("VDL12345");
+
+    let mut response = HashMap::new();
+    response.insert("username", user_id);
+    HttpResponse::Ok().json(response)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-
     let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    println!("Testing DB connection...");
+
     let conn = Database::connect(&db_url).await.unwrap();
     let state = AppState { conn };
 
-    println!("Listening...");
+    println!("OK ! Listening...");
 
     HttpServer::new(move || {
+        let mut cors: Cors;
+
+        match std::env::var("CORS_ORIGIN_ALLOW_ALL") {
+            Ok(allow_all) => {
+                if allow_all == "True" {
+                    cors = Cors::permissive();
+                } else {
+                    let env_origins = std::env::var("CORS_ALLOWED_ORIGINS").unwrap();
+                    let origins: Vec<&str> = env_origins.split(',').collect();
+
+                    cors = Cors::default();
+
+                    for origin in origins {
+                        cors = cors.allowed_origin(origin);
+                    }
+                }
+            },
+            Err(_) => {
+                panic!("CORS_ORIGIN_ALLOW_ALL must be set");
+            }
+        }
+
+        cors = cors.allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+            .allowed_header(header::CONTENT_TYPE)
+            .max_age(3600);
+
         App::new()
+            .wrap(cors)
+            .app_data(web::Data::new(state.clone()))
             .service(list)
             .service(get)
-            .app_data(web::Data::new(state.clone()))
     })
         .bind(("0.0.0.0", 8000))?
         .run()

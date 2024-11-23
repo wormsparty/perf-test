@@ -1,10 +1,18 @@
 use std::collections::HashMap;
 use sea_orm::{sea_query::{Alias, Expr, PostgresQueryBuilder, Query}, DatabaseConnection, DbBackend, DbErr, EntityTrait, Iterable, Order, Statement};
 use sea_orm::sea_query::extension::postgres::PgExpr;
-use crate::dto::{EntityWithTotal, FilterQuery, PaginatedResponse};
+use sea_orm::sea_query::{Func, SimpleExpr};
+use crate::dto::{WithTotalTrait, GridFilter, PaginatedResponse};
 
-pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
-    filter: &FilterQuery,
+fn unaccent<T>(expr: T) -> SimpleExpr
+where
+    T: Into<Expr>,
+{
+    Func::cust(Alias::new("unaccent")).arg(expr.into()).into()
+}
+
+pub async fn get_entities_with_total<T: EntityTrait, U: WithTotalTrait>(
+    filter: &GridFilter,
     global_searchable_fields: &Vec<T::Column>,
     column_by_name: &HashMap<String, T::Column>,
     db: &DatabaseConnection,
@@ -19,33 +27,36 @@ pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
         )
         .from(T::default());
 
-    // Filter
+    // Filter (ignore case)
     for (name, filter) in &filter.filter {
         let column_name = column_by_name.get(name).ok_or(DbErr::Custom("invalid column name".to_string()))?;
         let column = Expr::col(*column_name);
+        let filter_no_accent = unidecode::unidecode(&filter.filter);
 
         match filter.operator.as_str() {
-            "equals" => query = query.and_where(column.eq(filter.filter.clone())),
-            "notEquals" => query = query.and_where(column.ne(filter.filter.clone())),
-            "contains" => query = query.and_where(column.ilike(format!("%{}%", filter.filter))),
-            "notContains" => query = query.and_where(column.ilike(format!("%{}%", filter.filter)).not()),
-            "startsWith" => query = query.and_where(column.ilike(format!("{}%", filter.filter))),
-            "endsWith" => query = query.and_where(column.ilike(format!("%{}", filter.filter))),
+            "equals" => query = query.and_where(unaccent(column).eq(filter_no_accent)),
+            "notEquals" => query = query.and_where(unaccent(column).ne(filter_no_accent)),
+            "contains" => query = query.and_where(unaccent(column).ilike(format!("%{}%", filter_no_accent))),
+            "notContains" => query = query.and_where(unaccent(column).ilike(format!("%{}%", filter_no_accent)).not()),
+            "startsWith" => query = query.and_where(unaccent(column).ilike(format!("{}%", filter_no_accent))),
+            "endsWith" => query = query.and_where(unaccent(column).ilike(format!("%{}", filter_no_accent))),
             "blank" => query = query.and_where(column.is_null()),
             "notBlank" => query = query.and_where(column.is_not_null()),
             _ => return Err(DbErr::Custom(format!(
-                "Opérateur non supporté: {}.",
+                "Unsupported operator: {}.",
                 filter.operator
             ))),
         }
+
     }
 
-    // Global filter
+    // Global filter (ignore case)
     if !filter.global_search.is_empty() {
-        let mut or_condition = Expr::col(global_searchable_fields[0]).ilike(format!("%{}%", filter.global_search));
+        let filter_no_accent = unidecode::unidecode(&filter.global_search);
+        let mut or_condition = unaccent(Expr::col(global_searchable_fields[0])).ilike(format!("%{}%", filter_no_accent));
 
         for field in &global_searchable_fields[1..] {
-            or_condition = or_condition.or(Expr::col(*field).ilike(format!("%{}%", filter.global_search)));
+            or_condition = or_condition.or(unaccent(Expr::col(*field)).ilike(format!("%{}%", filter_no_accent)));
         }
 
         query = query.and_where(or_condition);
@@ -60,10 +71,15 @@ pub async fn get_entities_with_total<T: EntityTrait, U: EntityWithTotal>(
             *column,
             if sort.sort.to_lowercase() == "asc" { Order::Asc } else { Order::Desc },
         );
+    } else {
+        let column = column_by_name.get("id").ok_or(DbErr::Custom("id column not defined".to_string()))?;
+        query = query.order_by(*column,Order::Asc);
     }
 
     // Paging
-    query = query.offset(filter.start).limit(filter.end - filter.start);
+    if filter.end != -1 {
+        query = query.offset(filter.start as u64).limit((filter.end - filter.start) as u64);
+    }
 
     // Execute query
     let (sql, values) = query.build(PostgresQueryBuilder);
