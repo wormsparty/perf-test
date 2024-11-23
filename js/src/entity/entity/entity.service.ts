@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityEntity } from "./entity.entity/entity.entity";
+import { EntityEntity } from './entity.entity/entity.entity';
 import { EntityRequestDto } from '../dto/entity-request.dto/entity-request.dto';
 import { Repository, Brackets } from 'typeorm';
+
+const removeAccents = (str: string) => {
+  return str.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+};
 
 @Injectable()
 export class EntityService {
@@ -17,11 +21,7 @@ export class EntityService {
     const globalSearchableFields = ['colonne_1', 'colonne_2'];
 
     const entityColumns = this.entityRepository.metadata.ownColumns;
-
-    let builder = this.entityRepository
-      .createQueryBuilder('e')
-      .addSelect('COUNT(*) OVER ()', 'total')
-      .where('1 = 1');
+    let builder = this.entityRepository.createQueryBuilder('e').where('1 = 1');
 
     let paramNb = 1;
 
@@ -37,25 +37,38 @@ export class EntityService {
       }
 
       const param = {};
+      const filterUnaccent = removeAccents(filter.filter);
 
       if (filter.type === 'equals') {
-        param[`f${paramNb}`] = filter.filter;
-        builder = builder.andWhere(`${key} = :f${paramNb}`, param);
+        param[`f${paramNb}`] = filterUnaccent;
+        builder = builder.andWhere(`unaccent(${key}) = :f${paramNb}`, param);
       } else if (filter.type === 'notEquals') {
-        param[`f${paramNb}`] = filter.filter;
-        builder = builder.andWhere(`${key} <> :f${paramNb}`, param);
+        param[`f${paramNb}`] = filterUnaccent;
+        builder = builder.andWhere(`unaccent(${key}) <> :f${paramNb}`, param);
       } else if (filter.type === 'contains') {
-        param[`f${paramNb}`] = `%${filter.filter}%`;
-        builder = builder.andWhere(`${key} ilike :f${paramNb}`, param);
+        param[`f${paramNb}`] = `%${filterUnaccent}%`;
+        builder = builder.andWhere(
+          `unaccent(${key}) ilike :f${paramNb}`,
+          param,
+        );
       } else if (filter.type === 'notContains') {
-        param[`f${paramNb}`] = `%${filter.filter}%`;
-        builder = builder.andWhere(`not ${key} ilike :f${paramNb}`, param);
+        param[`f${paramNb}`] = `%${filterUnaccent}%`;
+        builder = builder.andWhere(
+          `not unaccent(${key}) ilike :f${paramNb}`,
+          param,
+        );
       } else if (filter.type === 'startsWith') {
-        param[`f${paramNb}`] = `${filter.filter}%`;
-        builder = builder.andWhere(`${key} ilike :f${paramNb}`, param);
+        param[`f${paramNb}`] = `${filterUnaccent}%`;
+        builder = builder.andWhere(
+          `unaccent(${key}) ilike :f${paramNb}`,
+          param,
+        );
       } else if (filter.type === 'endsWith') {
-        param[`f${paramNb}`] = `%${filter.filter}`;
-        builder = builder.andWhere(`${key} ilike :f${paramNb}`, param);
+        param[`f${paramNb}`] = `%${filterUnaccent}`;
+        builder = builder.andWhere(
+          `unaccent(${key}) ilike :f${paramNb}`,
+          param,
+        );
       } else if (filter.type === 'blank') {
         builder = builder.andWhere(`(${key} <> '') IS NOT TRUE`);
       } else if (filter.type === 'notBlank') {
@@ -69,13 +82,15 @@ export class EntityService {
 
     // Global filter
     if (request.globalSearch) {
+      const globalSearchUnaccent = removeAccents(request.globalSearch);
+
       builder = builder.andWhere(
         new Brackets((qb) => {
           qb = qb.where('1 = 0');
 
           for (const field of globalSearchableFields) {
-            qb = qb.orWhere(`${field} ilike :global`, {
-              global: `%${request.globalSearch}%`,
+            qb = qb.orWhere(`unaccent(${field}) ilike :global`, {
+              global: `%${globalSearchUnaccent}%`,
             });
           }
 
@@ -99,17 +114,10 @@ export class EntityService {
     // Paging
     builder = builder.skip(request.start).take(request.end - request.start);
 
-    return await builder.getRawMany().then((entities) => {
+    return await builder.getManyAndCount().then(([entities, total]) => {
       return {
-        // TODO: Can we do better than manually mapping to entity?
-        data: entities.map((e) => {
-          return {
-            id: e.e_id,
-            colonne_1: e.e_colonne_1,
-            colonne_2: e.e_colonne_2,
-          };
-        }),
-        total: entities.length > 0 ? parseInt(entities[0].total, 10) : 0,
+        data: entities,
+        total: total,
       };
     });
   }

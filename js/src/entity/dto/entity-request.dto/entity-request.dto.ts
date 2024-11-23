@@ -1,4 +1,4 @@
-import { IsString, IsNumber, MaxLength } from 'class-validator';
+import { IsString, IsNumber } from 'class-validator';
 
 class Sort {
   @IsString()
