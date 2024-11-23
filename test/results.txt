@@ -10,8 +10,7 @@
 
 
 
-                            AMD64 (mini PC)
-
+                           Mini PC, DB locale
 
             Mean        Std.Dev.    Min         Median      Max
 Go          0.042       0.001       0.041       0.042       0.048
@@ -20,7 +19,7 @@ JS          0.056       0.002       0.052       0.055       0.070
 Python      0.064       0.004       0.061       0.063       0.082
 
 
-                            AMD64 (PC gaming)
+                          PC gaming, DB locale
 
             Mean        Std.Dev.    Min         Median      Max
 Go          0.017       0.002       0.015       0.016       0.040
@@ -28,3 +27,11 @@ Rust        0.019       0.003       0.015       0.018       0.034
 JS          0.019       0.002       0.017       0.019       0.033
 Python      0.047       0.010       0.028       0.047       0.070
 
+
+                   DB sur PC Gaming, test sur mini PC
+
+            Mean        Std.Dev.    Min         Median      Max
+Go          0.045       0.010       0.024       0.048       0.057
+Rust        0.053       0.005       0.036       0.053       0.069
+JS          0.066       0.008       0.043       0.066       0.095
+Python      0.089       0.011       0.051       0.089       0.114
