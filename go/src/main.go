@@ -73,7 +73,7 @@ func main() {
 	fmt.Println("Testing DB connection...")
 
 	if err := db.Ping(db.Context()); err != nil {
-		log.Fatal("Erreur de connexion: ", err)
+		log.Fatal("Error : ", err)
 	}
 
 	fmt.Println("OK !")
