@@ -45,7 +45,12 @@ psql $ADMIN_DATABASE_URL << EOT
         GRANT postgres TO $DB_USER;
 EOT
 
+psql $DATABASE_URL << EOT
+	CREATE EXTENSION IF NOT EXISTS unaccent;
+EOT
+
 cat << EOT > ../.env
-DATABASE_URL=postgres://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME
+DATABASE_URL=postgres://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME?sslmode=disable
 ADMIN_DATABASE_URL=postgres://postgres:$POSTGRES_PASSWORD@localhost:5432
+CORS_ORIGIN_ALLOW_ALL=True
 EOT
