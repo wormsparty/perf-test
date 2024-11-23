@@ -4,11 +4,10 @@ use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::sea_query::{Func, SimpleExpr};
 use crate::dto::{WithTotalTrait, GridFilter, PaginatedResponse};
 
-fn unaccent<T>(expr: T) -> SimpleExpr
-where
-    T: Into<Expr>,
-{
-    Func::cust(Alias::new("unaccent")).arg(expr.into()).into()
+macro_rules! unaccent {
+    ($col:expr) => {
+        SimpleExpr::from(Func::cust(Alias::new("unaccent")).arg($col))
+    }
 }
 
 pub async fn get_entities_with_total<T: EntityTrait, U: WithTotalTrait>(
@@ -34,12 +33,12 @@ pub async fn get_entities_with_total<T: EntityTrait, U: WithTotalTrait>(
         let filter_no_accent = unidecode::unidecode(&filter.filter);
 
         match filter.operator.as_str() {
-            "equals" => query = query.and_where(unaccent(column).eq(filter_no_accent)),
-            "notEquals" => query = query.and_where(unaccent(column).ne(filter_no_accent)),
-            "contains" => query = query.and_where(unaccent(column).ilike(format!("%{}%", filter_no_accent))),
-            "notContains" => query = query.and_where(unaccent(column).ilike(format!("%{}%", filter_no_accent)).not()),
-            "startsWith" => query = query.and_where(unaccent(column).ilike(format!("{}%", filter_no_accent))),
-            "endsWith" => query = query.and_where(unaccent(column).ilike(format!("%{}", filter_no_accent))),
+            "equals" => query = query.and_where(unaccent!(column).eq(filter_no_accent)),
+            "notEquals" => query = query.and_where(unaccent!(column).ne(filter_no_accent)),
+            "contains" => query = query.and_where(unaccent!(column).ilike(format!("%{}%", filter_no_accent))),
+            "notContains" => query = query.and_where(unaccent!(column).ilike(format!("%{}%", filter_no_accent)).not()),
+            "startsWith" => query = query.and_where(unaccent!(column).ilike(format!("{}%", filter_no_accent))),
+            "endsWith" => query = query.and_where(unaccent!(column).ilike(format!("%{}", filter_no_accent))),
             "blank" => query = query.and_where(column.is_null()),
             "notBlank" => query = query.and_where(column.is_not_null()),
             _ => return Err(DbErr::Custom(format!(
@@ -53,10 +52,10 @@ pub async fn get_entities_with_total<T: EntityTrait, U: WithTotalTrait>(
     // Global filter (ignore case)
     if !filter.global_search.is_empty() {
         let filter_no_accent = unidecode::unidecode(&filter.global_search);
-        let mut or_condition = unaccent(Expr::col(global_searchable_fields[0])).ilike(format!("%{}%", filter_no_accent));
+        let mut or_condition = unaccent!(Expr::col(global_searchable_fields[0])).ilike(format!("%{}%", filter_no_accent));
 
         for field in &global_searchable_fields[1..] {
-            or_condition = or_condition.or(unaccent(Expr::col(*field)).ilike(format!("%{}%", filter_no_accent)));
+            or_condition = or_condition.or(unaccent!(Expr::col(*field)).ilike(format!("%{}%", filter_no_accent)));
         }
 
         query = query.and_where(or_condition);

@@ -3,12 +3,13 @@ mod filter;
 mod dto;
 
 use std::collections::HashMap;
+use std::time::Duration;
 use dotenvy::dotenv;
 use serde::Serialize;
 use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::{post, get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use sea_orm::{Database, DatabaseConnection, EntityTrait, FromQueryResult, ColumnTrait, QueryFilter};
+use sea_orm::{Database, DatabaseConnection, EntityTrait, FromQueryResult, ColumnTrait, QueryFilter, ConnectOptions};
 use crate::entities::entity;
 use crate::entities::entity::Entity;
 use crate::filter::{get_entities_with_total};
@@ -94,8 +95,22 @@ async fn main() -> std::io::Result<()> {
 
     println!("Testing DB connection...");
 
-    let conn = Database::connect(&db_url).await.unwrap();
-    let state = AppState { conn };
+    let mut opt = ConnectOptions::new(db_url);
+
+    opt.max_connections(5)
+        .min_connections(5)
+        .connect_timeout(Duration::from_secs(8))
+        .idle_timeout(Duration::from_secs(8))
+        .max_lifetime(Duration::from_secs(8))
+        .sqlx_logging(false);
+
+    let db = Database::connect(opt).await;
+    let state: AppState;
+
+    match db {
+        Ok(conn) => { state = AppState { conn } }
+        Err(err) => panic!("Connection to DB failed: {}", err)
+    }
 
     println!("OK ! Listening...");
 
