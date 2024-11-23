@@ -37,11 +37,11 @@ export const filter = async <T>(
     const filter = request.filter[key];
 
     if (filter.filterType !== 'text') {
-      return Promise.reject('Unsupported filter type');
+      throw Error('Unsupported filter type');
     }
 
     if (!entityColumns.find((column) => column.propertyName === key)) {
-      return Promise.reject('Invalid column name');
+      throw Error('Invalid column name');
     }
 
     const param = {};
@@ -73,7 +73,7 @@ export const filter = async <T>(
     } else if (filter.type === 'notBlank') {
       builder = builder.andWhere(`${key} <> ''`);
     } else {
-      return Promise.reject('Unsupported type');
+      throw Error('Unsupported type');
     }
 
     paramNb++;
@@ -104,7 +104,7 @@ export const filter = async <T>(
     const validDir = ['ASC', 'DESC'];
 
     if (validDir.indexOf(dir) === -1) {
-      return Promise.reject('Invalid sort direction');
+      throw Error('Invalid sort direction');
     }
 
     builder = builder.orderBy(sort.colId, dir as 'DESC' | 'ASC');
