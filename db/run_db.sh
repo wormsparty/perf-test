@@ -36,8 +36,8 @@ else
 	echo "Container already running"
 fi
 
-DATABASE_URL=postgres://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME
-ADMIN_DATABASE_URL=postgres://postgres:$POSTGRES_PASSWORD@localhost:5432
+DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME
+ADMIN_DATABASE_URL=postgresql://postgres:$POSTGRES_PASSWORD@localhost:5432
 
 psql $ADMIN_DATABASE_URL << EOT
         CREATE USER $DB_USER with PASSWORD '$DB_PASSWORD' CREATEDB;
