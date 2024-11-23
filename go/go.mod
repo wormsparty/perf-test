@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-pg/pg/v10 v10.13.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mozillazg/go-unidecode v0.2.0
 )
 
 require (

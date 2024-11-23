@@ -3,9 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-pg/pg/v10"
 	"github.com/go-pg/pg/v10/orm"
+	"github.com/mozillazg/go-unidecode"
 )
 
 type Sort struct {
@@ -27,6 +29,10 @@ type GridRequest struct {
 	GlobalSearch string            `json:"globalSearch"`
 }
 
+func removeAccents(s string) string {
+	return strings.ToLower(unidecode.Unidecode(s))
+}
+
 func filterSortAndPage(dataset *orm.Query, request GridRequest) (*orm.Query, error) {
 	// Filter
 	for key, filter := range request.Filter {
@@ -35,19 +41,20 @@ func filterSortAndPage(dataset *orm.Query, request GridRequest) (*orm.Query, err
 		}
 
 		col := pg.Ident(key)
+		unaccentedFilter := removeAccents(filter.Filter)
 
 		if filter.Type == "equals" {
-			dataset = dataset.Where("? = ?", col, filter.Filter)
+			dataset = dataset.Where("unaccent(?) = ?", col, unaccentedFilter)
 		} else if filter.Type == "notEquals" {
-			dataset = dataset.Where("? <> ?", col, filter.Filter)
+			dataset = dataset.Where("unaccent(?) <> ?", col, unaccentedFilter)
 		} else if filter.Type == "contains" {
-			dataset = dataset.Where("? ilike ?", col, fmt.Sprintf("%%%s%%", filter.Filter))
+			dataset = dataset.Where("unaccent(?) ilike ?", col, "%"+unaccentedFilter+"%")
 		} else if filter.Type == "notContains" {
-			dataset = dataset.Where("NOT ? ilike ?", col, fmt.Sprintf("%%%s%%", filter.Filter))
+			dataset = dataset.Where("NOT unaccent(?) ilike ?", col, "%"+unaccentedFilter+"%")
 		} else if filter.Type == "startsWith" {
-			dataset = dataset.Where("? ilike ?", col, fmt.Sprintf("%s%%", filter.Filter))
+			dataset = dataset.Where("unaccent(?) ilike ?", col, unaccentedFilter+"%")
 		} else if filter.Type == "endsWith" {
-			dataset = dataset.Where("? ilike ?", col, fmt.Sprintf("%%%s", filter.Filter))
+			dataset = dataset.Where("unaccent(?) ilike ?", col, "%"+unaccentedFilter)
 		} else if filter.Type == "blank" {
 			dataset = dataset.Where("(? <> '') IS NOT TRUE", col)
 		} else if filter.Type == "notBlank" {
@@ -59,9 +66,11 @@ func filterSortAndPage(dataset *orm.Query, request GridRequest) (*orm.Query, err
 
 	// Global filter
 	if len(request.GlobalSearch) >= 0 {
+		unaccentedGlobalSearch := removeAccents(request.GlobalSearch)
+
 		dataset = dataset.WhereGroup(func(q *pg.Query) (*pg.Query, error) {
 			for _, field := range globalSearchableFields {
-				q = q.WhereOr("position(? in ?) > 0", request.GlobalSearch, pg.Ident(field))
+				q = q.WhereOr("unaccent(?) ilike ?", pg.Ident(field), "%"+unaccentedGlobalSearch+"%")
 			}
 			return q, nil
 		})
