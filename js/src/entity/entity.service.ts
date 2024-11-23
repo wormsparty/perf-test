@@ -20,6 +20,7 @@ export class EntityService {
     const entityColumns = this.entityRepository.metadata.ownColumns;
     const builder = this.entityRepository
       .createQueryBuilder('e')
+      .addSelect('COUNT(*) OVER ()', 'total')
       .where('1 = 1');
 
     return filter(builder, request, entityColumns, globalSearchableFields);

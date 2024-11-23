@@ -1,9 +1,28 @@
 import { Brackets, SelectQueryBuilder } from 'typeorm';
 import { GridRequest } from '../dto/grid.request';
 import { ColumnMetadata } from 'typeorm/metadata/ColumnMetadata';
+import { plainToClass } from 'class-transformer';
+import { EntityEntity } from '../entity.entity';
 
 const removeAccents = (str: string) => {
   return str.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+};
+
+const mapRawToEntity = <T>(raw: any[], entity: new () => T): T[] => {
+  return raw.map((row) => {
+    const entityData = Object.keys(row)
+      .filter((key) => key.startsWith('e_'))
+      .reduce(
+        (acc, key) => {
+          const cleanKey = key.replace('e_', '');
+          acc[cleanKey] = row[key];
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
+
+    return plainToClass(entity, entityData);
+  });
 };
 
 export const filter = async <T>(
@@ -94,10 +113,10 @@ export const filter = async <T>(
   // Paging
   builder = builder.skip(request.start).take(request.end - request.start);
 
-  return await builder.getManyAndCount().then(([entities, total]) => {
+  return await builder.getRawMany().then((entities) => {
     return {
-      data: entities,
-      total: total,
+      data: mapRawToEntity(entities, EntityEntity),
+      total: entities.length > 0 ? parseInt(entities[0].total, 10) : 0,
     };
   });
-}
+};
