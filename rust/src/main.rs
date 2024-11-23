@@ -117,23 +117,18 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let mut cors: Cors;
 
-        match std::env::var("CORS_ORIGIN_ALLOW_ALL") {
-            Ok(allow_all) => {
-                if allow_all == "True" {
-                    cors = Cors::permissive();
-                } else {
-                    let env_origins = std::env::var("CORS_ALLOWED_ORIGINS").unwrap();
-                    let origins: Vec<&str> = env_origins.split(',').collect();
+        let cors_allow_all = std::env::var("CORS_ORIGIN_ALLOW_ALL").expect("CORS_ORIGIN_ALLOW_ALL must be set");
+        
+        if cors_allow_all == "True" {
+            cors = Cors::permissive();
+        } else {
+            let env_origins = std::env::var("CORS_ALLOWED_ORIGINS").unwrap();
+            let origins: Vec<&str> = env_origins.split(',').collect();
 
-                    cors = Cors::default();
+            cors = Cors::default();
 
-                    for origin in origins {
-                        cors = cors.allowed_origin(origin);
-                    }
-                }
-            },
-            Err(_) => {
-                panic!("CORS_ORIGIN_ALLOW_ALL must be set");
+            for origin in origins {
+                cors = cors.allowed_origin(origin);
             }
         }
 
