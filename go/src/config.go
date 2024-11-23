@@ -1,46 +1,41 @@
 package main
 
 import (
+	"log"
 	"os"
+	"strconv"
+	"strings"
 
-	"github.com/gin-gonic/gin"
-	"gopkg.in/yaml.v3"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
 	Server struct {
-		Host         string   `yaml:"host"`
-		Port         string   `yaml:"port"`
-		CorsOrigins  []string `yaml:"cors_origins"`
-		CorsAllowAll bool     `yaml:"cors_allow_all"`
-		Mode         string   `yaml:"mode"`
-	} `yaml:"server"`
-	Database struct {
-		Address  string `yaml:"address"`
-		Username string `yaml:"user"`
-		Password string `yaml:"pass"`
-		Name     string `yaml:"name"`
-	} `yaml:"database"`
-}
-
-func setConfig(cfg *Config) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Set("cfg", cfg)
-		c.Next()
+		CorsOrigins  []string
+		CorsAllowAll bool
+		Mode         string
 	}
+	DatabaseUrl string
 }
 
 func readConfig(cfg *Config) {
-	f, err := os.Open("config.yml")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(cfg)
+	err := godotenv.Load("../.env")
 
 	if err != nil {
-		panic(err)
+		log.Println("Failed to open ../.env, skipping")
 	}
+
+	cfg.Server.CorsOrigins = strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",")
+	cfg.Server.CorsAllowAll, _ = strconv.ParseBool(os.Getenv("CORS_ORIGIN_ALLOW_ALL"))
+
+	if os.Getenv("DEBUG") == "True" {
+		cfg.Server.Mode = "debug"
+	} else {
+		cfg.Server.Mode = "release"
+	}
+
+	cfg.DatabaseUrl = os.Getenv("DATABASE_URL")
+
+	//configStr, _ := json.Marshal(cfg)
+	//fmt.Println(string(configStr))
 }

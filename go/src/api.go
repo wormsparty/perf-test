@@ -1,15 +1,17 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
-	"github.com/go-pg/pg/v10"
+	"net/http"
 )
 
-type Result struct {
+type EntityResult struct {
 	Data  []Table `json:"data"`
 	Total int     `json:"total"`
+}
+
+type LoginResult struct {
+	Username string `json:"username"`
 }
 
 type Table struct {
@@ -24,32 +26,36 @@ var globalSearchableFields = [...]string{
 	"colonne_2",
 }
 
-func list(c *gin.Context) {
-	var request Request
+func (h *Handler) login(c *gin.Context) {
+	var userIdHeader = c.Request.Header["Userid"]
+
+	var result LoginResult
+
+	if len(userIdHeader) > 0 {
+		result.Username = userIdHeader[0]
+	} else {
+		result.Username = "VDL12345"
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) list(c *gin.Context) {
+	var request GridRequest
 	err := c.BindJSON(&request)
 
 	if err != nil {
-		c.AbortWithError(500, err)
+		_ = c.AbortWithError(500, err)
 		return
 	}
 
-	cfg := c.MustGet("cfg").(*Config)
-
-	db := pg.Connect(&pg.Options{
-		Addr:     cfg.Database.Address,
-		User:     cfg.Database.Username,
-		Password: cfg.Database.Password,
-		Database: cfg.Database.Name,
-	})
-	defer db.Close()
-
 	var entities []Table
-	dataset := db.Model(&entities).Column("*")
+	dataset := h.db.Model(&entities).Column("*")
 
 	dataset, err = filterSortAndPage(dataset, request)
 
 	if err != nil {
-		c.AbortWithError(500, err)
+		_ = c.AbortWithError(500, err)
 		return
 	}
 
@@ -57,11 +63,11 @@ func list(c *gin.Context) {
 	total, err := dataset.SelectAndCount()
 
 	if err != nil {
-		c.AbortWithError(500, err)
+		_ = c.AbortWithError(500, err)
 		return
 	}
 
-	var result Result
+	var result EntityResult
 	result.Data = entities
 	result.Total = total
 

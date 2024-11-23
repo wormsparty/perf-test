@@ -19,7 +19,7 @@ type Filter struct {
 	Filter     string `json:"filter"`
 }
 
-type Request struct {
+type GridRequest struct {
 	Start        int               `json:"start"`
 	End          int               `json:"end"`
 	Sort         []Sort            `json:"sort"`
@@ -27,14 +27,14 @@ type Request struct {
 	GlobalSearch string            `json:"globalSearch"`
 }
 
-func filterSortAndPage(dataset *orm.Query, request Request) (*orm.Query, error) {
+func filterSortAndPage(dataset *orm.Query, request GridRequest) (*orm.Query, error) {
 	// Filter
 	for key, filter := range request.Filter {
 		if filter.FilterType != "text" {
 			return nil, errors.New("Unsupported filter type")
 		}
 
-		col := pg.Ident(toSnakeCase(key))
+		col := pg.Ident(key)
 
 		if filter.Type == "equals" {
 			dataset = dataset.Where("? = ?", col, filter.Filter)
@@ -70,7 +70,7 @@ func filterSortAndPage(dataset *orm.Query, request Request) (*orm.Query, error) 
 	// Sort
 	if len(request.Sort) > 0 {
 		sort := request.Sort[0]
-		dataset = dataset.Order(fmt.Sprintf("%s %s", toSnakeCase(sort.ColId), sort.Sort))
+		dataset = dataset.Order(fmt.Sprintf("%s %s", sort.ColId, sort.Sort))
 	}
 
 	// Page
