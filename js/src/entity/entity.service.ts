@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityEntity } from './entity.entity/entity.entity';
-import { EntityRequestDto } from '../dto/entity-request.dto/entity-request.dto';
+import { EntityEntity } from './entity.entity';
+import { EntityRequestDto } from './dto/entity-request.dto';
 import { Repository, Brackets } from 'typeorm';
 
 const removeAccents = (str: string) => {

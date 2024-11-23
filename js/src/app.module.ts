@@ -22,7 +22,7 @@ console.log(process.cwd());
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),*/
-        entities: ['**/entity/*.entity{.ts,.js}'],
+        entities: ['entity/*.entity{.ts,.js}'],
         synchronize: true,
         autoLoadEntities: true,
       }),
