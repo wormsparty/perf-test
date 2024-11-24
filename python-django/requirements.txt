@@ -2,3 +2,4 @@ Django
 inflection
 psycopg2
 gunicorn
+unidecode

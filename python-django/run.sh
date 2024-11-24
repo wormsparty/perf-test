@@ -12,4 +12,6 @@ fi
 
 . .venv/bin/activate
 pip install -r requirements.txt
-python manage.py runserver
+
+#python manage.py runserver
+gunicorn pythontest.wsgi:application --bind 0.0.0.0:8000

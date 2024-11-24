@@ -1,117 +1,77 @@
-from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Window, Count, QuerySet
 from typing import List
-import inflection
+from unidecode import unidecode
 
+def grid_filter(qs: QuerySet, query, global_searchable_fields: List[str]):
+    """Returns the list en entities, filtered and ordered according to the query parameters"""
 
-operator_mapping = {
-    'startsWith': 'istartswith',
-    'endsWith': 'iendswith',
-    'contains': 'icontains',
-    'notContains': 'icontains',
-    'equals': 'iexact',
-    'notEqual': 'iexact',
-    'blank': 'exact',
-    'notBlank': 'exact',
-}
+    qs = qs.annotate(
+        total=Window(
+            expression=Count('*'),
+            partition_by=None
+        )
+    )
 
-negative_operators = [
-    'notContains',
-    'notEqual',
-    'notBlank',
-]
+    # Filter
+    for column, field_filter in query['filter'].items():
+        filter_value = unidecode(field_filter['filter'])
+        unaccent_column = f"{column}__unaccent"
 
-class GridFilter():
-    """Common filter classe for AG-Grid filtering and sorting"""
+        match field_filter['type']:
+            case 'equals':
+                qs = qs.filter(**{f"{unaccent_column}": filter_value})
+            case 'notEquals':
+                qs = qs.filter(~Q(**{f"{unaccent_column}": filter_value}))
+            case 'contains':
+                qs = qs.filter(**{f"{unaccent_column}__icontains": filter_value})
+            case 'notContains':
+                qs = qs.filter(~Q(**{f"{unaccent_column}__icontains": filter_value}))
+            case 'startsWith':
+                qs = qs.filter(**{f"{unaccent_column}__istartswith": filter_value})
+            case 'endsWith':
+                qs = qs.filter(**{f"{unaccent_column}__iendswith": filter_value})
+            case 'blank':
+                qs = qs.filter(
+                    Q(**{f"{column}": ""}) | Q(**{f"{column}__isnull": True})
+                )
+            case 'notBlank':
+                qs = qs.filter(
+                    ~(Q(**{f"{column}": ""}) | Q(**{f"{column}__isnull": True}))
+                )
 
-    def __init__(self, global_searchable_fields: List[str], id_field: str):
-        self.global_searchable_fields = global_searchable_fields
-        self.id_field = id_field
+    # Global filter
+    global_search = query['globalSearch']
 
+    if global_search:
+        global_search_normalized = unidecode(global_search)
+        q = Q()
 
-    def __get_filter(self, column: str, cond):
-        """Apply a given filter, such as 'field contains value'"""
-        filter_value = cond.get('filter')
-        value = filter_value if filter_value else ''
+        for column in global_searchable_fields:
+            unaccent_column = f"{column}__unaccent"
+            q = q | Q(**{f'{unaccent_column}__icontains': global_search_normalized})
 
-        operator = operator_mapping[cond["type"]]
+        qs = qs.filter(q)
 
-        if operator != '':
-            return { f'{column}__{operator}': value }
-        else:
-            return { f'{column}': value }
+    # Sort
+    sort = query['sort']
 
+    if sort:
+        first_sort = sort[0]
 
-    def apply(self, dataset, search_filters, sort_list, start: int, end: int, global_search: str):
-        """Returns the list en entities, filtered and ordered according to the query parameters"""
+        match first_sort['sort'].lower():
+            case 'desc':
+                qs = qs.order_by(first_sort['colId'])
+            case 'asc':
+                qs = qs.order_by(f'-{first_sort["colId"]}')
+    else:
+        qs = qs.order_by('id')
 
-        # Global filter
-        if global_search:
-            q = Q()
+    qs = qs[query['start']:query['end']]
 
-            for field in self.global_searchable_fields:
-                q = q | Q(**{f'{field}__icontains': global_search})
+    data = list(qs)
+    total = data[0].total if len(data) > 0 else 0
 
-            dataset = dataset.filter(q)
-
-        # Filter
-        for key in search_filters:
-            column = inflection.underscore(key)
-            value = search_filters[key]
-            conditions = value.get("conditions")
-
-            if conditions is not None:
-                operator = value.get("operator")
-                query = Q()
-
-                for cond in conditions:
-                    q = Q(**self.__get_filter(column, cond))
-
-                    if cond["type"] in negative_operators:
-                        q = ~q
-
-                    if operator == "AND":
-                        query = query & q
-                    else:
-                        query = query | q
-
-                dataset = dataset.filter(query)
-            else:
-                q = Q(**self.__get_filter(column, value))
-
-                if value["type"] in negative_operators:
-                    q = ~q
-
-                dataset = dataset.filter(q)
-
-        # Sort
-        if len(sort_list) > 0:
-            for sort in sort_list:
-                sort_direction = sort['sort']
-                sort_column = sort['colId']
-
-                # Special case: we will consider each table has a unique column ID,
-                # and in our case we remap it in the backend
-                if sort_column == 'id':
-                    sort_column = self.id_field
-
-                # GraphQL forces columns to be camelCase, however in Python our column names
-                # are snake_case. Therefore we need to convert them.
-                sort_column_snake_case = inflection.underscore(sort_column)
-
-                if sort_direction == 'desc':
-                    dataset = dataset.order_by(sort_column_snake_case)
-                elif sort_direction == 'asc':
-                    dataset = dataset.order_by(f'-{sort_column_snake_case}')
-        else:
-            dataset = dataset.order_by(self.id_field)
-
-        page_size = end - start
-        paginator = Paginator(dataset, page_size)
-        page = paginator.get_page(start / page_size + 1)
-        total = paginator.count
-
-        return {
-            "data": page,
-            "total": total,
-        }
+    return {
+        "data": data,
+        "total": total,
+    }
