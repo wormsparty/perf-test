@@ -18,6 +18,10 @@ class EntitySerializer(serializers.ModelSerializer):
         model = Entity
         fields = ["id", "colonne_1", "colonne_2"]
 
+class ResponseSerializer(serializers.Serializer):
+    data = EntitySerializer(many=True)
+    total = serializers.IntegerField()
+
 
 class AtlasApiView(APIView):
     def post(self, request, *args, **kwargs):
@@ -25,9 +29,5 @@ class AtlasApiView(APIView):
 
         body = json.loads(request.body.decode('UTF-8'))
         entities_with_total = grid_filter(Entity.objects.all(), body, global_searchable_fields)
-        serialized_entities = EntitySerializer(entities_with_total.get['data'], many=True)
 
-        return Response({
-            'data': serialized_entities,
-            'total': entities_with_total.get('total')
-        })
+        return Response(ResponseSerializer(entities_with_total).data)
