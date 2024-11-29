@@ -1,4 +1,5 @@
 Django
+djangorestframework
 inflection
 psycopg2
 gunicorn
